@@ -77,6 +77,9 @@ def calculate_action_similarity(pred_action: dict, gt_action: dict) -> float:
     
     action_type = pred_action.get('action_type')
     
+    # Calculate detail similarity (existing logic)
+    detail_similarity = 0.0
+    
     if action_type in ['click', 'long_press']:
         # Coordinate similarity
         pred_x, pred_y = pred_action.get('x', 0), pred_action.get('y', 0)
@@ -85,28 +88,38 @@ def calculate_action_similarity(pred_action: dict, gt_action: dict) -> float:
         distance = np.sqrt((pred_x - gt_x)**2 + (pred_y - gt_y)**2)
         max_distance = COORDINATE_TOLERANCE * max(SCREEN_WIDTH, SCREEN_HEIGHT) * 2
         
-        return max(0, 1 - distance / max_distance)
+        detail_similarity = max(0, 1 - distance / max_distance)
         
     elif action_type == 'scroll':
-        return 1.0 if pred_action.get('direction') == gt_action.get('direction') else 0.0
+        detail_similarity = 1.0 if pred_action.get('direction') == gt_action.get('direction') else 0.0
         
     elif action_type in ['input_text', 'open_app']:
         # Text similarity (substring matching)
         pred_text = str(pred_action.get('text', '') or pred_action.get('app_name', '')).lower().strip()
         gt_text = str(gt_action.get('text', '') or gt_action.get('app_name', '')).lower().strip()
         
-        return 1.0 if (pred_text in gt_text) or (gt_text in pred_text) else 0.0
+        detail_similarity = 1.0 if (pred_text in gt_text) or (gt_text in pred_text) else 0.0
         
     elif action_type in ['navigate_home', 'navigate_back']:
-        return 1.0
+        detail_similarity = 1.0
         
     elif action_type == 'wait':
         pred_time = pred_action.get('seconds', 1)
         gt_time = gt_action.get('seconds', 1)
         time_diff = abs(pred_time - gt_time)
-        return 1.0 if time_diff <= 2 else max(0, 1 - time_diff / 10)
+        detail_similarity = 1.0 if time_diff <= 2 else max(0, 1 - time_diff / 10)
+    else:
+        # Unknown action type, only check status
+        detail_similarity = 0.0
+
+    pred_status = pred_action.get('status', 'not done')
+    gt_status = gt_action.get('status', 'not done')
+    status_similarity = 1.0 if pred_status == gt_status else 0.0
+
+    STATUS_WEIGHT = 0.3  
+    combined_similarity = (1 - STATUS_WEIGHT) * detail_similarity + STATUS_WEIGHT * status_similarity
     
-    return 0.0
+    return combined_similarity
 
 def find_best_alignment(pred_actions: List[dict], gt_actions: List[dict]) -> List[Tuple[int, int, float]]:
     """
