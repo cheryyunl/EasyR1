@@ -33,10 +33,10 @@ FUTURE_DETAIL_WEIGHT = 0.2   # Future action detail importance (lower!)
 def format_reward(predict: str) -> float:
     """
     Check if prediction follows correct Step format.
-    Expected: Step X: "screenshot_abstraction": "...", "action": {...}
+    Expected: Step X: "screenshot_abstraction": "...", "action": {...}, "status": "..."
     """
-    # Find all step patterns
-    step_pattern = r'Step\s+\d+:[^"]*"screenshot_abstraction":[^"]*"[^"]*"[^"]*"action":\s*\{[^}]+\}'
+    # Find all step patterns (status is optional for backward compatibility)
+    step_pattern = r'Step\s+\d+:[^"]*"screenshot_abstraction":[^"]*"[^"]*"[^"]*"action":\s*\{[^}]+\}(?:[^"]*"status":[^"]*"[^"]*")?'
     steps = re.findall(step_pattern, predict, re.DOTALL)
     
     if len(steps) == 0:
@@ -49,7 +49,13 @@ def format_reward(predict: str) -> float:
             action_match = re.search(r'"action":\s*(\{[^}]+\})', step)
             if action_match:
                 json.loads(action_match.group(1))
-                valid_steps += 1
+                status_match = re.search(r'"status":\s*"([^"]+)"', step)
+                if status_match:
+                    status = status_match.group(1)
+                    if status in ['done', 'not done']:
+                        valid_steps += 1
+                else:
+                    valid_steps += 1
         except:
             continue
     
