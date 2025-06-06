@@ -62,14 +62,24 @@ def format_reward(predict: str) -> float:
     return valid_steps / len(steps)
 
 def parse_actions_from_text(text: str) -> List[dict]:
-    """Extract action sequence from text."""
+    """Extract action sequence from text, including status."""
     actions = []
-    pattern = r'Step\s+\d+:[^"]*"action":\s*(\{[^}]+\})'
     
-    matches = re.findall(pattern, text, re.DOTALL)
-    for action_str in matches:
+    action_pattern = r'"action":\s*(\{[^}]+\})'
+    status_pattern = r'"status":\s*"([^"]+)"'
+    
+    action_matches = re.findall(action_pattern, text)
+    status_matches = re.findall(status_pattern, text)
+
+    for i, action_str in enumerate(action_matches):
         try:
-            actions.append(json.loads(action_str))
+            action_dict = json.loads(action_str)
+            if i < len(status_matches):
+                action_dict['status'] = status_matches[i]
+            else:
+                action_dict['status'] = 'not done' 
+                
+            actions.append(action_dict)
         except:
             continue
     
