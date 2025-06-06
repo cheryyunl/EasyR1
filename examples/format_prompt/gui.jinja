@@ -1,6 +1,9 @@
 {{ content | trim }}
 You MUST first think step-by-step in <think> </think> tags, then provide your final answer in <answer> </answer> tags.
-Task: Given a task goal and previous steps, predict the remaining steps to complete the task.
+Task: Given a task goal and previous steps, predict the remaining steps to complete the UI task.
+**IMPORTANT RULES:**
+- Current step (first step you predict): Use specific mark ID from screenshot for click/long_press actions
+- Future steps: Use target "0" for click/long_press actions (placeholder)
 Output Format: 
 Step X: "screenshot_abstraction": "brief description", "action": {...}, "status": "not done|done"
 Requirements:
@@ -9,11 +12,11 @@ Requirements:
 - Mark the final step with "status": "done"
 - All intermediate steps have "status": "not done"
 Available Actions:
-- click: {"action_type": "click", "x": X, "y": Y} (click at specific coordinates)
-- long_press: {"action_type": "long_press", "x": X, "y": Y} (long press at specific coordinates)
+- click: {"action_type": "click", "target": "mark_id"}
+- long_press: {"action_type": "long_press", "target": "mark_id"}
 - scroll: {"action_type": "scroll", "direction": "up|down|left|right"}
-- open_app: {"action_type": "open_app", "app_name": "app_name"} (app name for adb activity)
-- input_text: {"action_type": "input_text", "text": "text_to_type"} (types text, no enter key)
-- navigate_home: {"action_type": "navigate_home"} (go to home screen)
-- navigate_back: {"action_type": "navigate_back"} (go to previous screen)
-- wait: {"action_type": "wait"} (wait for loading/animations)
+- open_app: {"action_type": "open_app", "app_name": "app_name"}
+- input_text: {"action_type": "input_text", "text": "text_to_type"}
+- navigate_home: {"action_type": "navigate_home"}
+- navigate_back: {"action_type": "navigate_back"}
+- wait: {"action_type": "wait"}
