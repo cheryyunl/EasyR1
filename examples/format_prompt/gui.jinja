@@ -1,0 +1,19 @@
+{{ content | trim }}
+You MUST first think step-by-step in <think> </think> tags, then provide your final answer in <answer> </answer> tags.
+Task: Given a task goal and previous steps, predict the remaining steps to complete the task.
+Output Format: 
+Step X: "screenshot_abstraction": "brief description", "action": {...}, "status": "not done|done"
+Requirements:
+- Continue step numbering from where previous steps ended
+- Use clear, concise screenshot descriptions  
+- Mark the final step with "status": "done"
+- All intermediate steps have "status": "not done"
+Available Actions:
+- click: {"action_type": "click", "x": X, "y": Y}
+- long_press: {"action_type": "long_press", "x": X, "y": Y}
+- scroll: {"action_type": "scroll", "direction": "up|down|left|right"}
+- open_app: {"action_type": "open_app", "app_name": "app_name"}
+- input_text: {"action_type": "input_text", "text": "text_to_type"}
+- navigate_home: {"action_type": "navigate_home"}
+- navigate_back: {"action_type": "navigate_back"}
+- wait: {"action_type": "wait"}
