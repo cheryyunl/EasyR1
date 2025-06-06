@@ -120,10 +120,7 @@ def calculate_action_similarity(pred_action: dict, gt_action: dict) -> float:
         detail_similarity = 1.0
         
     elif action_type == 'wait':
-        pred_time = pred_action.get('seconds', 1)
-        gt_time = gt_action.get('seconds', 1)
-        time_diff = abs(pred_time - gt_time)
-        detail_similarity = 1.0 if time_diff <= 2 else max(0, 1 - time_diff / 10)
+        detail_similarity = 1.0
     else:
         # Unknown action type, only check status
         detail_similarity = 0.0
