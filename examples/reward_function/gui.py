@@ -33,75 +33,83 @@ def format_reward(predict: str) -> float:
     Check if prediction follows correct Step format.
     Expected: Step X: "screenshot_abstraction": "...", "action": {...}, "status": "not done|done"
     """
-    # Find all step patterns - status is now required
-    step_pattern = r'Step\s+\d+:[^"]*"screenshot_abstraction":[^"]*"[^"]*"[^"]*"action":\s*\{[^}]+\}[^"]*"status":[^"]*"(done|not done)"'
-    steps = re.findall(step_pattern, predict, re.DOTALL)
+    # More flexible pattern to handle various formatting
+    step_pattern = r'Step\s+\d+:\s*"screenshot_abstraction":\s*"[^"]*",\s*"action":\s*\{[^}]+\},\s*"status":\s*"(done|not done)"'
     
-    if len(steps) == 0:
+    # Find all steps first
+    all_steps = re.findall(r'Step\s+\d+:', predict)
+    if len(all_steps) == 0:
         return 0.0
     
-    # Validate JSON format and required fields for each step
     valid_steps = 0
-    for step_match in re.finditer(step_pattern, predict, re.DOTALL):
-        step = step_match.group(0)
+    
+    # Check each step individually
+    for step_match in re.finditer(r'(Step\s+\d+:.*?)(?=Step\s+\d+:|$)', predict, re.DOTALL):
+        step_text = step_match.group(1).strip()
+        
         try:
-            # Extract and validate action JSON
-            action_match = re.search(r'"action":\s*(\{[^}]+\})', step)
-            if action_match:
-                action_dict = json.loads(action_match.group(1))
-                
-                # Check required action_type field
-                if 'action_type' not in action_dict:
+            # Check if step has all required components
+            has_screenshot = re.search(r'"screenshot_abstraction":\s*"[^"]*"', step_text)
+            has_action = re.search(r'"action":\s*(\{[^}]+\})', step_text)
+            has_status = re.search(r'"status":\s*"(done|not done)"', step_text)
+            
+            if not (has_screenshot and has_action and has_status):
+                continue
+            
+            # Validate action JSON and required fields
+            action_match = has_action
+            action_dict = json.loads(action_match.group(1))
+            
+            # Check required action_type field
+            if 'action_type' not in action_dict:
+                continue
+            
+            action_type = action_dict['action_type']
+            
+            # Validate action-specific required fields
+            if action_type in ['click', 'long_press']:
+                if 'target' not in action_dict:
                     continue
-                
-                action_type = action_dict['action_type']
-                
-                # Validate action-specific required fields
-                if action_type in ['click', 'long_press']:
-                    if 'target' not in action_dict:
-                        continue
-                elif action_type == 'scroll':
-                    if 'direction' not in action_dict or action_dict['direction'] not in ['up', 'down', 'left', 'right']:
-                        continue
-                elif action_type == 'open_app':
-                    if 'app_name' not in action_dict:
-                        continue
-                elif action_type == 'input_text':
-                    if 'text' not in action_dict:
-                        continue
-                elif action_type in ['navigate_home', 'navigate_back', 'wait']:
-                    # These actions don't require additional fields
-                    pass
-                else:
-                    # Unknown action type
+            elif action_type == 'scroll':
+                if 'direction' not in action_dict or action_dict['direction'] not in ['up', 'down', 'left', 'right']:
                     continue
-                
-                # Check status field
-                status_match = re.search(r'"status":\s*"(done|not done)"', step)
-                if status_match:
-                    valid_steps += 1
-        except:
+            elif action_type == 'open_app':
+                if 'app_name' not in action_dict:
+                    continue
+            elif action_type == 'input_text':
+                if 'text' not in action_dict:
+                    continue
+            elif action_type in ['navigate_home', 'navigate_back', 'wait']:
+                # These actions don't require additional fields
+                pass
+            else:
+                # Unknown action type
+                continue
+            
+            valid_steps += 1
+            
+        except Exception:
             continue
     
-    # Count total steps found
-    total_steps = len(re.findall(r'Step\s+\d+:', predict))
-    
-    return valid_steps / total_steps if total_steps > 0 else 0.0
+    return valid_steps / len(all_steps)
 
 def parse_actions_from_text(text: str) -> List[dict]:
     """Extract action sequence from text, including status."""
     actions = []
     
-    step_pattern = r'Step\s+\d+:[^"]*"screenshot_abstraction":[^"]*"[^"]*"[^"]*"action":\s*(\{[^}]+\})[^"]*"status":\s*"([^"]+)"'
-    
-    for match in re.finditer(step_pattern, text, re.DOTALL):
-        action_str = match.group(1)
-        status = match.group(2)
+    # Parse each step individually to handle various formats
+    for step_match in re.finditer(r'(Step\s+\d+:.*?)(?=Step\s+\d+:|$)', text, re.DOTALL):
+        step_text = step_match.group(1).strip()
         
         try:
-            action_dict = json.loads(action_str)
-            action_dict['status'] = status
-            actions.append(action_dict)
+            # Extract action and status from this step
+            action_match = re.search(r'"action":\s*(\{[^}]+\})', step_text)
+            status_match = re.search(r'"status":\s*"([^"]+)"', step_text)
+            
+            if action_match and status_match:
+                action_dict = json.loads(action_match.group(1))
+                action_dict['status'] = status_match.group(1)
+                actions.append(action_dict)
         except:
             continue
     
