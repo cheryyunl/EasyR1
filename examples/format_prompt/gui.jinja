@@ -2,15 +2,13 @@
 You MUST first think step-by-step in <think> </think> tags, then provide your final answer in <answer> </answer> tags.
 Task: Given a task goal and previous steps, predict the remaining steps to complete the UI task.
 **IMPORTANT RULES:**
+- Screenshot contains numbered marks indicating interactive elements 
 - Current step (first step you predict): Use specific mark ID from screenshot for click/long_press actions
 - Future steps: Use target "0" for click/long_press actions (placeholder)
-Output Format: 
+- Mark the final action step as "status": "done" and all intermediate steps have "status": "not done"
+Answer Output Format: 
 Step X: "screenshot_abstraction": "brief description", "action": {...}, "status": "not done|done"
-Requirements:
-- Continue step numbering from where previous steps ended
-- Use clear, concise screenshot descriptions  
-- Mark the final step with "status": "done"
-- All intermediate steps have "status": "not done"
+Step X+1: "screenshot_abstraction": "brief description", "action": {...}, "status": "not done|done"
 Available Actions:
 - click: {"action_type": "click", "target": "mark_id"}
 - long_press: {"action_type": "long_press", "target": "mark_id"}
