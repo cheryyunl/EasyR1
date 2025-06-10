@@ -19,9 +19,7 @@ from typing import Dict, List, Tuple
 
 # Configuration
 GAMMA = 0.8                          # Discount factor for future actions
-SCREEN_WIDTH = 1080                  # Target screen width
-SCREEN_HEIGHT = 2400                 # Target screen height
-COORDINATE_TOLERANCE = 0.04          # 4% of max screen dimension
+COORDINATE_TOLERANCE = 0.04          # 4% tolerance for coordinate-based actions
 FUTURE_TOLERANCE_MULTIPLIER = 1.5    # Looser tolerance for future actions
 
 # Reward weights: current vs future actions
@@ -33,59 +31,83 @@ FUTURE_DETAIL_WEIGHT = 0.2   # Future action detail importance (lower!)
 def format_reward(predict: str) -> float:
     """
     Check if prediction follows correct Step format.
-    Expected: Step X: "screenshot_abstraction": "...", "action": {...}, "status": "..."
+    Expected: Step X: "screenshot_abstraction": "...", "action": {...}, "status": "not done|done"
     """
-    # Find all step patterns (status is optional for backward compatibility)
-    step_pattern = r'Step\s+\d+:[^"]*"screenshot_abstraction":[^"]*"[^"]*"[^"]*"action":\s*\{[^}]+\}(?:[^"]*"status":[^"]*"[^"]*")?'
+    # Find all step patterns - status is now required
+    step_pattern = r'Step\s+\d+:[^"]*"screenshot_abstraction":[^"]*"[^"]*"[^"]*"action":\s*\{[^}]+\}[^"]*"status":[^"]*"(done|not done)"'
     steps = re.findall(step_pattern, predict, re.DOTALL)
     
     if len(steps) == 0:
         return 0.0
     
-    # Validate JSON format for each step
+    # Validate JSON format and required fields for each step
     valid_steps = 0
-    for step in steps:
+    for step_match in re.finditer(step_pattern, predict, re.DOTALL):
+        step = step_match.group(0)
         try:
+            # Extract and validate action JSON
             action_match = re.search(r'"action":\s*(\{[^}]+\})', step)
             if action_match:
-                json.loads(action_match.group(1))
-                status_match = re.search(r'"status":\s*"([^"]+)"', step)
-                if status_match:
-                    status = status_match.group(1)
-                    if status in ['done', 'not done']:
-                        valid_steps += 1
+                action_dict = json.loads(action_match.group(1))
+                
+                # Check required action_type field
+                if 'action_type' not in action_dict:
+                    continue
+                
+                action_type = action_dict['action_type']
+                
+                # Validate action-specific required fields
+                if action_type in ['click', 'long_press']:
+                    if 'target' not in action_dict:
+                        continue
+                elif action_type == 'scroll':
+                    if 'direction' not in action_dict or action_dict['direction'] not in ['up', 'down', 'left', 'right']:
+                        continue
+                elif action_type == 'open_app':
+                    if 'app_name' not in action_dict:
+                        continue
+                elif action_type == 'input_text':
+                    if 'text' not in action_dict:
+                        continue
+                elif action_type in ['navigate_home', 'navigate_back', 'wait']:
+                    # These actions don't require additional fields
+                    pass
                 else:
+                    # Unknown action type
+                    continue
+                
+                # Check status field
+                status_match = re.search(r'"status":\s*"(done|not done)"', step)
+                if status_match:
                     valid_steps += 1
         except:
             continue
     
-    return valid_steps / len(steps)
+    # Count total steps found
+    total_steps = len(re.findall(r'Step\s+\d+:', predict))
+    
+    return valid_steps / total_steps if total_steps > 0 else 0.0
 
 def parse_actions_from_text(text: str) -> List[dict]:
     """Extract action sequence from text, including status."""
     actions = []
     
-    action_pattern = r'"action":\s*(\{[^}]+\})'
-    status_pattern = r'"status":\s*"([^"]+)"'
+    step_pattern = r'Step\s+\d+:[^"]*"screenshot_abstraction":[^"]*"[^"]*"[^"]*"action":\s*(\{[^}]+\})[^"]*"status":\s*"([^"]+)"'
     
-    action_matches = re.findall(action_pattern, text)
-    status_matches = re.findall(status_pattern, text)
-
-    for i, action_str in enumerate(action_matches):
+    for match in re.finditer(step_pattern, text, re.DOTALL):
+        action_str = match.group(1)
+        status = match.group(2)
+        
         try:
             action_dict = json.loads(action_str)
-            if i < len(status_matches):
-                action_dict['status'] = status_matches[i]
-            else:
-                action_dict['status'] = 'not done' 
-                
+            action_dict['status'] = status
             actions.append(action_dict)
         except:
             continue
     
     return actions
 
-def calculate_action_similarity(pred_action: dict, gt_action: dict) -> float:
+def calculate_action_similarity(pred_action: dict, gt_action: dict, is_current: bool = True) -> float:
     """Calculate similarity score between two actions (0-1)."""
     # Type must match
     if pred_action.get('action_type') != gt_action.get('action_type'):
@@ -93,18 +115,25 @@ def calculate_action_similarity(pred_action: dict, gt_action: dict) -> float:
     
     action_type = pred_action.get('action_type')
     
-    # Calculate detail similarity (existing logic)
+    # Calculate detail similarity
     detail_similarity = 0.0
     
     if action_type in ['click', 'long_press']:
-        # Coordinate similarity
-        pred_x, pred_y = pred_action.get('x', 0), pred_action.get('y', 0)
-        gt_x, gt_y = gt_action.get('x', 0), gt_action.get('y', 0)
-        
-        distance = np.sqrt((pred_x - gt_x)**2 + (pred_y - gt_y)**2)
-        max_distance = COORDINATE_TOLERANCE * max(SCREEN_WIDTH, SCREEN_HEIGHT) * 2
-        
-        detail_similarity = max(0, 1 - distance / max_distance)
+        if is_current:
+            # For current action: strict target matching
+            pred_target = str(pred_action.get('target', ''))
+            gt_target = str(gt_action.get('target', ''))
+            detail_similarity = 1.0 if pred_target == gt_target else 0.0
+        else:
+            # For future actions: lenient target matching (allow placeholder "0")
+            pred_target = str(pred_action.get('target', ''))
+            gt_target = str(gt_action.get('target', ''))
+            
+            # Accept if prediction uses placeholder "0" or matches exactly
+            if pred_target == "0" or pred_target == gt_target:
+                detail_similarity = 1.0
+            else:
+                detail_similarity = 0.0
         
     elif action_type == 'scroll':
         detail_similarity = 1.0 if pred_action.get('direction') == gt_action.get('direction') else 0.0
@@ -116,15 +145,13 @@ def calculate_action_similarity(pred_action: dict, gt_action: dict) -> float:
         
         detail_similarity = 1.0 if (pred_text in gt_text) or (gt_text in pred_text) else 0.0
         
-    elif action_type in ['navigate_home', 'navigate_back']:
-        detail_similarity = 1.0
-        
-    elif action_type == 'wait':
+    elif action_type in ['navigate_home', 'navigate_back', 'wait']:
         detail_similarity = 1.0
     else:
-        # Unknown action type, only check status
+        # Unknown action type
         detail_similarity = 0.0
 
+    # Status similarity
     pred_status = pred_action.get('status', 'not done')
     gt_status = gt_action.get('status', 'not done')
     status_similarity = 1.0 if pred_status == gt_status else 0.0
@@ -143,7 +170,8 @@ def find_best_alignment(pred_actions: List[dict], gt_actions: List[dict]) -> Lis
     if len(pred_actions) == len(gt_actions):
         alignments = []
         for i in range(len(pred_actions)):
-            similarity = calculate_action_similarity(pred_actions[i], gt_actions[i])
+            is_current = (i == 0)
+            similarity = calculate_action_similarity(pred_actions[i], gt_actions[i], is_current)
             alignments.append((i, i, similarity))
         return alignments
     
@@ -154,12 +182,13 @@ def find_best_alignment(pred_actions: List[dict], gt_actions: List[dict]) -> Lis
     for pred_idx, pred_action in enumerate(pred_actions):
         best_gt_idx = None
         best_score = 0.0
+        is_current = (pred_idx == 0)
         
         for gt_idx, gt_action in enumerate(gt_actions):
             if gt_idx in used_gt_indices:
                 continue
                 
-            similarity = calculate_action_similarity(pred_action, gt_action)
+            similarity = calculate_action_similarity(pred_action, gt_action, is_current)
             
             # Position penalty: prefer maintaining order
             position_penalty = abs(pred_idx - gt_idx) * 0.1
