@@ -213,6 +213,93 @@ def find_best_alignment(pred_actions: List[dict], gt_actions: List[dict]) -> Lis
     
     return alignments
 
+def count_repetitions(actions: List[dict]) -> int:
+    if len(actions) <= 2:
+        return 0
+    simplified = []
+    for action in actions:
+        key = {
+            'type': action.get('action_type'),
+            'target': action.get('target') if action.get('action_type') in ['click', 'long_press'] else None
+        }
+        simplified.append(json.dumps(key, sort_keys=True))
+    
+    repeat_count = 0
+
+    for i in range(len(simplified) - 2):
+        if simplified[i] == simplified[i+1] == simplified[i+2]:
+            repeat_count += 1
+            
+    for i in range(len(simplified) - 4):
+        if (simplified[i] == simplified[i+2] == simplified[i+4] and
+            simplified[i+1] == simplified[i+3]):
+            repeat_count += 2 
+    
+    return repeat_count
+
+def count_placeholder_abuse(actions: List[dict]) -> int:
+    if len(actions) == 0:
+        return 0
+    
+    current_action = actions[0]
+    
+    if (current_action.get('action_type') in ['click', 'long_press'] and 
+        str(current_action.get('target', '')) == "0"):
+        return 1  
+    return 0
+
+def calculate_alignment_score(alignments: List[Tuple[int, int, float]], pred_actions: List[dict], gt_actions: List[dict]) -> float:
+    total_reward = 0.0
+    
+    # Calculate reward for matched actions
+    for pred_idx, gt_idx, detail_similarity in alignments:
+        is_current = (pred_idx == 0)  # First predicted action is "current"
+        
+        # Apply different weights for current vs future actions
+        if is_current:
+            type_weight = CURRENT_TYPE_WEIGHT
+            detail_weight = CURRENT_DETAIL_WEIGHT
+        else:
+            type_weight = FUTURE_TYPE_WEIGHT
+            detail_weight = FUTURE_DETAIL_WEIGHT
+        
+        # Type score (binary) + detail score (continuous)
+        type_score = type_weight  # Always 1.0 since alignment ensures type match
+        detail_score = detail_weight * detail_similarity
+        step_reward = type_score + detail_score
+        
+        # Apply discount factor
+        if is_current:
+            discounted_reward = step_reward
+        else:
+            discounted_reward = step_reward * (GAMMA ** pred_idx)
+        
+        total_reward += discounted_reward
+
+    if len(pred_actions) > 0 and pred_actions[-1].get('status') == 'done':
+            total_reward += 0.1
+        
+    # Coverage penalty for unmatched actions
+    matched_pred = len(alignments)
+    matched_gt = len(alignments)
+    extra_pred = len(pred_actions) - matched_pred
+    missed_gt = len(gt_actions) - matched_gt
+    
+    coverage_penalty = extra_pred * 0.1 + missed_gt * 0.15  # Missing GT actions penalized more
+    
+    # Normalize 
+    max_possible_reward = 1.0 + 0.1  # Current action
+    for i in range(1, len(gt_actions)):
+        max_possible_reward += (GAMMA ** i)
+    
+    if max_possible_reward > 0:
+        normalized_reward = (total_reward - coverage_penalty) / max_possible_reward
+    else:
+        normalized_reward = 0.0
+    
+    return max(0.0, min(1.0, normalized_reward))
+    
+    
 def accuracy_reward(predict: str, ground_truth: str) -> float:
     """
     Calculate accuracy reward using sequence alignment and discounted rewards.
@@ -223,61 +310,26 @@ def accuracy_reward(predict: str, ground_truth: str) -> float:
         
         if len(pred_actions) == 0 or len(gt_actions) == 0:
             return 0.0
-        
+
+        max_allowed_steps = len(gt_actions) + 5
+        if len(pred_actions) > max_allowed_steps:
+            return 0.05
+            
         # Find best alignment between sequences
         alignments = find_best_alignment(pred_actions, gt_actions)
+        base_score = calculate_alignment_score(alignments, pred_actions, gt_actions)
+        repeat_count = count_repetitions(pred_actions)
+        repetition_penalty = repeat_count * 0.2
+
+        placeholder_penalty = count_placeholder_abuse(pred_actions) * 0.15
         
-        total_reward = 0.0
-        
-        # Calculate reward for matched actions
-        for pred_idx, gt_idx, detail_similarity in alignments:
-            is_current = (pred_idx == 0)  # First predicted action is "current"
-            
-            # Apply different weights for current vs future actions
-            if is_current:
-                type_weight = CURRENT_TYPE_WEIGHT
-                detail_weight = CURRENT_DETAIL_WEIGHT
-            else:
-                type_weight = FUTURE_TYPE_WEIGHT
-                detail_weight = FUTURE_DETAIL_WEIGHT
-            
-            # Type score (binary) + detail score (continuous)
-            type_score = type_weight  # Always 1.0 since alignment ensures type match
-            detail_score = detail_weight * detail_similarity
-            step_reward = type_score + detail_score
-            
-            # Apply discount factor
-            if is_current:
-                discounted_reward = step_reward
-            else:
-                discounted_reward = step_reward * (GAMMA ** pred_idx)
-            
-            total_reward += discounted_reward
-        
-        # Coverage penalty for unmatched actions
-        matched_pred = len(alignments)
-        matched_gt = len(alignments)
-        extra_pred = len(pred_actions) - matched_pred
-        missed_gt = len(gt_actions) - matched_gt
-        
-        coverage_penalty = extra_pred * 0.1 + missed_gt * 0.15  # Missing GT actions penalized more
-        
-        # Normalize to 0-1 range
-        max_possible_reward = 1.0  # Current action
-        for i in range(1, len(gt_actions)):
-            max_possible_reward += (GAMMA ** i)
-        
-        if max_possible_reward > 0:
-            normalized_reward = (total_reward - coverage_penalty) / max_possible_reward
-        else:
-            normalized_reward = 0.0
-        
-        return max(0.0, min(1.0, normalized_reward))
+        final_score = base_score - repetition_penalty - placeholder_penalty
+        return max(0.0, min(1.0, final_score))
         
     except Exception:
         return 0.0
 
-def compute_score(predict: str, ground_truth: str, format_weight: float = 0.5) -> Dict[str, float]:
+def compute_score(predicts: List[str], ground_truths: List[str], format_weight: float = 0.2) -> List[Dict[str, float]]:
     """
     Compute final score combining format and accuracy rewards.
     
@@ -289,11 +341,17 @@ def compute_score(predict: str, ground_truth: str, format_weight: float = 0.5) -
     Returns:
         Dictionary with 'overall', 'format', and 'accuracy' scores
     """
-    format_score = format_reward(predict)
-    accuracy_score = accuracy_reward(predict, ground_truth)
-    
-    return {
-        "overall": (1 - format_weight) * accuracy_score + format_weight * format_score,
-        "format": format_score,
-        "accuracy": accuracy_score,
-    }
+    scores = []
+    for predict, ground_truth in zip(predicts, ground_truths):
+        predict = re.sub(r"\s*(<|>|/)\s*", r"\1", predict)  # handle qwen2.5vl-32b format
+        format_score = format_reward(predict)
+        accuracy_score = accuracy_reward(predict, ground_truth)
+        scores.append(
+            {
+                "overall": (1 - format_weight) * accuracy_score + format_weight * format_score,
+                "format": format_score,
+                "accuracy": accuracy_score,
+            }
+        )
+
+    return scores
