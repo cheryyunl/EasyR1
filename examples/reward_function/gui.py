@@ -328,7 +328,7 @@ def accuracy_reward(predict: str, ground_truth: str) -> float:
     except Exception:
         return 0.0
 
-def compute_score(predicts: List[str], ground_truths: List[str], format_weight: float = 0.2) -> List[Dict[str, float]]:
+def compute_score(predicts: List[str], ground_truths: List[str], format_weight: float = 0.1) -> List[Dict[str, float]]:
     """
     Compute final score combining format and accuracy rewards.
     
