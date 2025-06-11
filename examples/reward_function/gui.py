@@ -30,25 +30,27 @@ FUTURE_DETAIL_WEIGHT = 0.2   # Future action detail importance (lower!)
 
 def format_reward(predict: str) -> float:
     """
-    Check if prediction follows correct Step format.
-    Expected: Step X: "screenshot_abstraction": "...", "action": {...}, "status": "not done|done"
+    Check if prediction follows correct format:
+    <think>...</think><answer>Step X: ...</answer>
     """
-    # More flexible pattern to handle various formatting
-    step_pattern = r'Step\s+\d+:\s*"screenshot_abstraction":\s*"[^"]*",\s*"action":\s*\{[^}]+\},\s*"status":\s*"(done|not done)"'
+    xml_pattern = re.compile(r"<think>.*?</think>\s*<answer>.*?</answer>", re.DOTALL)
+    if not re.fullmatch(xml_pattern, predict):
+        return 0.0
     
-    # Find all steps first
-    all_steps = re.findall(r'Step\s+\d+:', predict)
+    answer_match = re.search(r"<answer>(.*?)</answer>", predict, re.DOTALL)
+    if not answer_match:
+        return 0.0
+    
+    answer_content = answer_match.group(1).strip()
+    all_steps = re.findall(r'Step\s+\d+:', answer_content) 
     if len(all_steps) == 0:
         return 0.0
     
     valid_steps = 0
-    
-    # Check each step individually
-    for step_match in re.finditer(r'(Step\s+\d+:.*?)(?=Step\s+\d+:|$)', predict, re.DOTALL):
+    for step_match in re.finditer(r'(Step\s+\d+:.*?)(?=Step\s+\d+:|$)', answer_content, re.DOTALL):  # ✅ 改为answer_content
         step_text = step_match.group(1).strip()
         
         try:
-            # Check if step has all required components
             has_screenshot = re.search(r'"screenshot_abstraction":\s*"[^"]*"', step_text)
             has_action = re.search(r'"action":\s*(\{[^}]+\})', step_text)
             has_status = re.search(r'"status":\s*"(done|not done)"', step_text)
@@ -56,17 +58,14 @@ def format_reward(predict: str) -> float:
             if not (has_screenshot and has_action and has_status):
                 continue
             
-            # Validate action JSON and required fields
             action_match = has_action
             action_dict = json.loads(action_match.group(1))
             
-            # Check required action_type field
             if 'action_type' not in action_dict:
                 continue
             
             action_type = action_dict['action_type']
             
-            # Validate action-specific required fields
             if action_type in ['click', 'long_press']:
                 if 'target' not in action_dict:
                     continue
@@ -80,10 +79,8 @@ def format_reward(predict: str) -> float:
                 if 'text' not in action_dict:
                     continue
             elif action_type in ['navigate_home', 'navigate_back', 'wait']:
-                # These actions don't require additional fields
                 pass
             else:
-                # Unknown action type
                 continue
             
             valid_steps += 1
@@ -95,10 +92,16 @@ def format_reward(predict: str) -> float:
 
 def parse_actions_from_text(text: str) -> List[dict]:
     """Extract action sequence from text, including status."""
+    answer_match = re.search(r"<answer>(.*?)</answer>", text, re.DOTALL)
+    if answer_match:
+        content = answer_match.group(1).strip()
+    else:
+        content = text
+    
     actions = []
     
-    # Parse each step individually to handle various formats
-    for step_match in re.finditer(r'(Step\s+\d+:.*?)(?=Step\s+\d+:|$)', text, re.DOTALL):
+    # Parse each step individually 
+    for step_match in re.finditer(r'(Step\s+\d+:.*?)(?=Step\s+\d+:|$)', content, re.DOTALL):
         step_text = step_match.group(1).strip()
         
         try:
@@ -112,7 +115,6 @@ def parse_actions_from_text(text: str) -> List[dict]:
                 actions.append(action_dict)
         except:
             continue
-    
     return actions
 
 def calculate_action_similarity(pred_action: dict, gt_action: dict, is_current: bool = True) -> float:
