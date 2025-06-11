@@ -290,7 +290,7 @@ def calculate_alignment_score(alignments: List[Tuple[int, int, float]], pred_act
     extra_pred = len(pred_actions) - matched_pred
     missed_gt = len(gt_actions) - matched_gt
     
-    coverage_penalty = extra_pred * 0.1 + missed_gt * 0.15  # Missing GT actions penalized more
+    coverage_penalty = extra_pred * 0.2 + missed_gt * 0.15  # Missing GT actions penalized more
     
     # Normalize 
     max_possible_reward = 1.0 + 0.1  # Current action + completion bonus
