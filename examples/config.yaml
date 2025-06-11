@@ -1,6 +1,6 @@
 data:
-  train_files: cheryyunl/android_control@train
-  val_files: cheryyunl/android_control@validation
+  train_files: cheryyunl/android_control@validation
+  val_files: cheryyunl/android_control@test
   prompt_key: problem
   answer_key: answer
   image_key: images
