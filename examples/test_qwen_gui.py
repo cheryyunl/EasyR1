@@ -16,7 +16,7 @@ def test_qwen_android_output():
     # 1. 加载数据集
     print("\n📊 加载数据集...")
     try:
-        dataset = load_dataset("cheryyunl/android_control", split="validation")
+        dataset = load_dataset("cheryyunl/android_control", split="train")
         print(f"✅ 数据集加载成功，共{len(dataset)}个样本")
         
         # 查看第一个样本
@@ -34,16 +34,35 @@ def test_qwen_android_output():
     model_name = "Qwen/Qwen2.5-7B-Instruct"
     
     try:
+        # 简化模型加载，避免分布式问题
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        print(f"📱 使用设备: {device}")
+        
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        
         model = AutoModelForCausalLM.from_pretrained(
             model_name,
-            torch_dtype="auto",
-            device_map="auto"
+            torch_dtype=torch.float16 if device == "cuda" else torch.float32,
+            device_map=None,  # 避免自动分布式
+            trust_remote_code=True
         )
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        model = model.to(device)
         print("✅ 模型加载成功")
     except Exception as e:
         print(f"❌ 模型加载失败: {e}")
-        return
+        print("💡 尝试CPU模式...")
+        try:
+            model = AutoModelForCausalLM.from_pretrained(
+                model_name,
+                torch_dtype=torch.float32,
+                device_map="cpu"
+            )
+            tokenizer = AutoTokenizer.from_pretrained(model_name)
+            device = "cpu"
+            print("✅ CPU模式加载成功")
+        except Exception as e2:
+            print(f"❌ CPU模式也失败: {e2}")
+            return
     
     # 3. 构建prompt
     system_prompt = """You MUST first think step-by-step in <think> </think> tags, then provide your final answer in <answer> </answer> tags.
@@ -87,7 +106,7 @@ Available Actions:
         add_generation_prompt=True
     )
     
-    model_inputs = tokenizer([text], return_tensors="pt").to(model.device)
+    model_inputs = tokenizer([text], return_tensors="pt").to(device)
     
     with torch.no_grad():
         generated_ids = model.generate(
@@ -95,7 +114,8 @@ Available Actions:
             max_new_tokens=1024,
             temperature=0.7,
             do_sample=True,
-            pad_token_id=tokenizer.eos_token_id
+            pad_token_id=tokenizer.eos_token_id,
+            eos_token_id=tokenizer.eos_token_id
         )
     
     generated_ids = [
