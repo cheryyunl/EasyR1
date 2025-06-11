@@ -47,7 +47,7 @@ def format_reward(predict: str) -> float:
         return 0.0
     
     valid_steps = 0
-    for step_match in re.finditer(r'(Step\s+\d+:.*?)(?=Step\s+\d+:|$)', answer_content, re.DOTALL):  # ✅ 改为answer_content
+    for step_match in re.finditer(r'(Step\s+\d+:.*?)(?=Step\s+\d+:|$)', answer_content, re.DOTALL):
         step_text = step_match.group(1).strip()
         
         try:
@@ -92,6 +92,9 @@ def format_reward(predict: str) -> float:
 
 def parse_actions_from_text(text: str) -> List[dict]:
     """Extract action sequence from text, including status."""
+    # Pre-process the text to handle format issues
+    text = re.sub(r"\s*(<|>|/)\s*", r"\1", text)
+    
     answer_match = re.search(r"<answer>(.*?)</answer>", text, re.DOTALL)
     if answer_match:
         content = answer_match.group(1).strip()
@@ -277,8 +280,9 @@ def calculate_alignment_score(alignments: List[Tuple[int, int, float]], pred_act
         
         total_reward += discounted_reward
 
+    # Completion bonus - fixed indentation
     if len(pred_actions) > 0 and pred_actions[-1].get('status') == 'done':
-            total_reward += 0.1
+        total_reward += 0.1
         
     # Coverage penalty for unmatched actions
     matched_pred = len(alignments)
@@ -289,7 +293,7 @@ def calculate_alignment_score(alignments: List[Tuple[int, int, float]], pred_act
     coverage_penalty = extra_pred * 0.1 + missed_gt * 0.15  # Missing GT actions penalized more
     
     # Normalize 
-    max_possible_reward = 1.0 + 0.1  # Current action
+    max_possible_reward = 1.0 + 0.1  # Current action + completion bonus
     for i in range(1, len(gt_actions)):
         max_possible_reward += (GAMMA ** i)
     
@@ -335,12 +339,12 @@ def compute_score(predicts: List[str], ground_truths: List[str], format_weight: 
     Compute final score combining format and accuracy rewards.
     
     Args:
-        predict: Model prediction text
-        ground_truth: Ground truth text
-        format_weight: Weight for format score (default: 0.5)
+        predicts: List of model prediction texts
+        ground_truths: List of ground truth texts
+        format_weight: Weight for format score (default: 0.1)
         
     Returns:
-        Dictionary with 'overall', 'format', and 'accuracy' scores
+        List of dictionaries with 'overall', 'format', and 'accuracy' scores
     """
     scores = []
     for predict, ground_truth in zip(predicts, ground_truths):
