@@ -29,66 +29,9 @@ FUTURE_TYPE_WEIGHT = 0.8     # Future action type importance (higher!)
 FUTURE_DETAIL_WEIGHT = 0.2   # Future action detail importance (lower!)
 
 def format_reward(predict: str) -> float:
-    """
-    Check if prediction follows correct format:
-    <think>...</think><answer>Step X: ...</answer>
-    """
-    xml_pattern = re.compile(r"<think>.*?</think>\s*<answer>.*?</answer>", re.DOTALL)
-    if not re.fullmatch(xml_pattern, predict):
-        return 0.0
-    
-    answer_match = re.search(r"<answer>(.*?)</answer>", predict, re.DOTALL)
-    if not answer_match:
-        return 0.0
-    
-    answer_content = answer_match.group(1).strip()
-    all_steps = re.findall(r'Step\s+\d+:', answer_content) 
-    if len(all_steps) == 0:
-        return 0.0
-    
-    valid_steps = 0
-    for step_match in re.finditer(r'(Step\s+\d+:.*?)(?=Step\s+\d+:|$)', answer_content, re.DOTALL):
-        step_text = step_match.group(1).strip()
-        
-        try:
-            has_screenshot = re.search(r'"screenshot_abstraction":\s*"[^"]*"', step_text)
-            has_action = re.search(r'"action":\s*(\{[^}]+\})', step_text)
-            has_status = re.search(r'"status":\s*"(done|not done)"', step_text)
-            
-            if not (has_screenshot and has_action and has_status):
-                continue
-            
-            action_match = has_action
-            action_dict = json.loads(action_match.group(1))
-            
-            if 'action_type' not in action_dict:
-                continue
-            
-            action_type = action_dict['action_type']
-            
-            if action_type in ['click', 'long_press']:
-                if 'target' not in action_dict:
-                    continue
-            elif action_type == 'scroll':
-                if 'direction' not in action_dict or action_dict['direction'] not in ['up', 'down', 'left', 'right']:
-                    continue
-            elif action_type == 'open_app':
-                if 'app_name' not in action_dict:
-                    continue
-            elif action_type == 'input_text':
-                if 'text' not in action_dict:
-                    continue
-            elif action_type in ['navigate_home', 'navigate_back', 'wait']:
-                pass
-            else:
-                continue
-            
-            valid_steps += 1
-            
-        except Exception:
-            continue
-    
-    return valid_steps / len(all_steps)
+    pattern = re.compile(r"<think>.*?</think>\s*<answer>.*?</answer>", re.DOTALL)
+    format_match = re.fullmatch(pattern, predict)
+    return 1.0 if format_match else 0.0
 
 def parse_actions_from_text(text: str) -> List[dict]:
     """Extract action sequence from text, including status."""
