@@ -37,7 +37,6 @@ def format_reward(predict: str) -> float:
     step_pattern = r'Step\s+\d+:\s*"screenshot_abstraction":\s*"[^"]*",\s*"action":\s*\{[^}]+\},\s*"status":\s*"(done|not done)"'
     
     # Find all steps first
-    print(f"🔍 DEBUG predict type: {type(predict)}")
     all_steps = re.findall(r'Step\s+\d+:', predict)
     if len(all_steps) == 0:
         return 0.0
