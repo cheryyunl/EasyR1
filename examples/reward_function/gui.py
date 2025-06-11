@@ -350,7 +350,9 @@ def compute_score(predicts: List[str], ground_truths: List[str], format_weight: 
     for predict, ground_truth in zip(predicts, ground_truths):
         predict = re.sub(r"\s*(<|>|/)\s*", r"\1", predict)  # handle qwen2.5vl-32b format
         format_score = format_reward(predict)
+        print("DEBUG: Format_reward", format_score)
         accuracy_score = accuracy_reward(predict, ground_truth)
+        print("DEBUG: Accuracy_score", accuracy_score)
         scores.append(
             {
                 "overall": (1 - format_weight) * accuracy_score + format_weight * format_score,
