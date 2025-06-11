@@ -6,6 +6,9 @@ Task: Given a task goal and previous steps, predict the remaining steps to compl
 - Current step (first step you predict): Use specific mark ID from screenshot for click/long_press actions
 - Future steps: Use target "0" for click/long_press actions (placeholder)
 - Mark the final action step as "status": "done" and all intermediate steps have "status": "not done"
+**EFFICIENCY RULES:**
+- Do NOT repeat actions or create unnecessary loops
+- Keep steps minimal and direct
 Answer Output Format: 
 Step X: "screenshot_abstraction": "brief description", "action": {...}, "status": "not done|done"
 Step X+1: "screenshot_abstraction": "brief description", "action": {...}, "status": "not done|done"
