@@ -310,7 +310,7 @@ def accuracy_reward(predict: str, ground_truth: str) -> float:
         if len(pred_actions) == 0 or len(gt_actions) == 0:
             return 0.0
 
-        max_allowed_steps = len(gt_actions) + 5
+        max_allowed_steps = len(gt_actions) + 3
         if len(pred_actions) > max_allowed_steps:
             return 0.05
             
