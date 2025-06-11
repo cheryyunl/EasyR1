@@ -1,14 +1,14 @@
 data:
-  train_files: hiyouga/math12k@train
-  val_files: hiyouga/math12k@test
+  train_files: cheryyunl/android_control@train
+  val_files: cheryyunl/android_control@validation
   prompt_key: problem
   answer_key: answer
   image_key: images
-  max_prompt_length: 2048
+  max_prompt_length: 4096
   max_response_length: 2048
   rollout_batch_size: 512
   val_batch_size: 1024
-  format_prompt: ./examples/format_prompt/math_format.jinja
+  format_prompt: ./examples/format_prompt/gui_format.jinja
   override_chat_template: null
   shuffle: true
   seed: 1
@@ -72,13 +72,13 @@ worker:
 
   reward:
     reward_type: batch
-    reward_function: ./examples/reward_function/math.py:compute_score
+    reward_function: ./examples/reward_function/gui.py:compute_score
 
 trainer:
   total_epochs: 15
   max_steps: null
   project_name: easy_r1
-  experiment_name: qwen2_5_7b_math_grpo
+  experiment_name: qwen2_5_7b_gui_grpo
   logger: ["console", "wandb"]
   nnodes: 1
   n_gpus_per_node: 8
