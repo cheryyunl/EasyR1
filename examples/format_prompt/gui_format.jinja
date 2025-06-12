@@ -7,8 +7,8 @@ You FIRST think about the reasoning process as an internal monologue and then pr
 - Mark the final action step as "status": "done" and all intermediate steps have "status": "not done"
 **EFFICIENCY RULES:**
 - Do NOT repeat actions or create unnecessary loops
-- Keep steps minimal and direct
-Output Format of your step predictions in <answer> </answer>: 
+- Give a concise step trajectory for the task goal
+**Output Format** in <answer> </answer>: 
 Step X: "screenshot_abstraction": "brief description", "action": {...}, "status": "not done|done"
 Step X+1: "screenshot_abstraction": "brief description", "action": {...}, "status": "not done|done"
 Available Actions:
