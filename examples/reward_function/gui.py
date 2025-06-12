@@ -29,9 +29,27 @@ FUTURE_TYPE_WEIGHT = 0.8     # Future action type importance (higher!)
 FUTURE_DETAIL_WEIGHT = 0.2   # Future action detail importance (lower!)
 
 def format_reward(predict: str) -> float:
-    pattern = re.compile(r"<think>.*?</think>\s*<answer>.*?</answer>", re.DOTALL)
-    format_match = re.fullmatch(pattern, predict)
-    return 1.0 if format_match else 0.0
+    if not re.fullmatch(r"<think>.*?</think>\s*<answer>.*?</answer>", predict, re.DOTALL):
+        return 0.0
+    answer_match = re.search(r"<answer>(.*?)</answer>", predict, re.DOTALL)
+    if not answer_match:  # 添加安全检查
+        return 0.0
+    
+    answer_content = answer_match.group(1).strip()
+    all_steps = re.findall(r'Step\s+\d+:', answer_content)
+    if not all_steps: 
+        return 0.0
+    
+    valid_steps = 0
+    for step_match in re.finditer(r'(Step\s+\d+:.*?)(?=Step\s+\d+:|$)', answer_content, re.DOTALL):
+        step_text = step_match.group(1).strip()
+
+        if (re.search(r'"screenshot_abstraction":\s*"[^"]*"', step_text) and
+            re.search(r'"action":\s*\{[^}]+\}', step_text) and
+            re.search(r'"status":\s*"(done|not done)"', step_text)):
+            valid_steps += 1
+    
+    return valid_steps / len(all_steps)
 
 def parse_actions_from_text(text: str) -> List[dict]:
     """Extract action sequence from text, including status."""
