@@ -19,8 +19,6 @@ from typing import Dict, List, Tuple
 
 # Configuration
 GAMMA = 0.8                          # Discount factor for future actions
-COORDINATE_TOLERANCE = 0.04          # 4% tolerance for coordinate-based actions
-FUTURE_TOLERANCE_MULTIPLIER = 1.5    # Looser tolerance for future actions
 
 # Reward weights: current vs future actions
 CURRENT_TYPE_WEIGHT = 0.6    # Current action type importance
@@ -32,7 +30,7 @@ def format_reward(predict: str) -> float:
     if not re.fullmatch(r"<think>.*?</think>\s*<answer>.*?</answer>", predict, re.DOTALL):
         return 0.0
     answer_match = re.search(r"<answer>(.*?)</answer>", predict, re.DOTALL)
-    if not answer_match:  # 添加安全检查
+    if not answer_match:  
         return 0.0
     
     answer_content = answer_match.group(1).strip()
