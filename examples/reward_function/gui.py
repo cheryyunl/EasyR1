@@ -168,7 +168,7 @@ def find_best_alignment(pred_actions: List[dict], gt_actions: List[dict]) -> Lis
             position_penalty = abs(pred_idx - gt_idx) * 0.1
             adjusted_score = max(0, similarity - position_penalty)
             
-            if adjusted_score > best_score and adjusted_score > 0.5:
+            if adjusted_score > best_score and adjusted_score > 0.4:
                 best_gt_idx = gt_idx
                 best_score = adjusted_score
         
@@ -201,17 +201,6 @@ def count_repetitions(actions: List[dict]) -> int:
             repeat_count += 2 
     
     return repeat_count
-
-def count_placeholder_abuse(actions: List[dict]) -> int:
-    if len(actions) == 0:
-        return 0
-    
-    current_action = actions[0]
-    
-    if (current_action.get('action_type') in ['click', 'long_press'] and 
-        str(current_action.get('target', '')) == "0"):
-        return 1  
-    return 0
 
 def calculate_alignment_score(alignments: List[Tuple[int, int, float]], pred_actions: List[dict], gt_actions: List[dict]) -> float:
     total_reward = 0.0
@@ -286,10 +275,8 @@ def accuracy_reward(predict: str, ground_truth: str) -> float:
         base_score = calculate_alignment_score(alignments, pred_actions, gt_actions)
         repeat_count = count_repetitions(pred_actions)
         repetition_penalty = repeat_count * 0.2
-
-        placeholder_penalty = count_placeholder_abuse(pred_actions) * 0.15
         
-        final_score = base_score - repetition_penalty - placeholder_penalty
+        final_score = base_score - repetition_penalty 
         return max(0.0, min(1.0, final_score))
         
     except Exception:
