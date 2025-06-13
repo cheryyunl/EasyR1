@@ -232,7 +232,7 @@ def calculate_alignment_score(alignments: List[Tuple[int, int, float]], pred_act
 
     # Completion bonus - fixed indentation
     if len(pred_actions) > 0 and pred_actions[-1].get('status') == 'done':
-        total_reward += 0.1
+        total_reward += 0.3
         
     # Coverage penalty for unmatched actions
     matched_pred = len(alignments)
@@ -240,10 +240,10 @@ def calculate_alignment_score(alignments: List[Tuple[int, int, float]], pred_act
     extra_pred = len(pred_actions) - matched_pred
     missed_gt = len(gt_actions) - matched_gt
     
-    coverage_penalty = extra_pred * 0.2 + missed_gt * 0.15  # Missing GT actions penalized more
+    coverage_penalty = extra_pred * 0.2 + missed_gt * 0.2  # Missing GT actions penalized
     
     # Normalize 
-    max_possible_reward = 1.0 + 0.1  # Current action + completion bonus
+    max_possible_reward = 1.0 + 0.3  # Current action + completion bonus
     for i in range(1, len(gt_actions)):
         max_possible_reward += (GAMMA ** i)
     
@@ -266,7 +266,7 @@ def accuracy_reward(predict: str, ground_truth: str) -> float:
         if len(pred_actions) == 0 or len(gt_actions) == 0:
             return 0.0
 
-        max_allowed_steps = len(gt_actions) + 3
+        max_allowed_steps = len(gt_actions) + 5
         if len(pred_actions) > max_allowed_steps:
             return 0.05
             
