@@ -168,7 +168,7 @@ def find_best_alignment(pred_actions: List[dict], gt_actions: List[dict]) -> Lis
             position_penalty = abs(pred_idx - gt_idx) * 0.1
             adjusted_score = max(0, similarity - position_penalty)
             
-            if adjusted_score > best_score and adjusted_score > 0.4:
+            if adjusted_score > best_score and adjusted_score > 0.25:
                 best_gt_idx = gt_idx
                 best_score = adjusted_score
         
