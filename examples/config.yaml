@@ -75,18 +75,18 @@ worker:
     reward_function: ./examples/reward_function/gui.py:compute_score
 
 trainer:
-  total_epochs: 10
+  total_epochs: 5
   max_steps: null
   project_name: easy_r1
   experiment_name: qwen2_5_7b_gui_grpo
   logger: ["console", "wandb"]
   nnodes: 1
   n_gpus_per_node: 8
-  val_freq: 5  # -1 to disable
+  val_freq: 10  # -1 to disable
   val_before_train: false
   val_only: false
   val_generations_to_log: 3
-  save_freq: 5  # -1 to disable
+  save_freq: 10  # -1 to disable
   save_limit: 3  # -1 to disable
   save_checkpoint_path: null
   load_checkpoint_path: null
