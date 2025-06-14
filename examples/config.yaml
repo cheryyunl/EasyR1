@@ -46,8 +46,8 @@ worker:
       enable_cpu_offload: false
       enable_rank0_init: true
     offload:
-      offload_params: true  # true: more CPU memory; false: more GPU memory
-      offload_optimizer: true  # true: more CPU memory; false: more GPU memory
+      offload_params: false  # true: more CPU memory; false: more GPU memory
+      offload_optimizer: false  # true: more CPU memory; false: more GPU memory
 
   rollout:
     n: 5
@@ -82,11 +82,11 @@ trainer:
   logger: ["console", "wandb"]
   nnodes: 1
   n_gpus_per_node: 8
-  val_freq: 10  # -1 to disable
+  val_freq: 20  # -1 to disable
   val_before_train: true
   val_only: false
   val_generations_to_log: 3
-  save_freq: 10  # -1 to disable
+  save_freq: 20  # -1 to disable
   save_limit: 3  # -1 to disable
   save_checkpoint_path: null
   load_checkpoint_path: null
