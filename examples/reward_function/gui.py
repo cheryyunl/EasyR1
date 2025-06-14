@@ -18,7 +18,7 @@ import numpy as np
 from typing import Dict, List, Tuple
 
 # Configuration
-GAMMA = 0.8                          # Discount factor for future actions
+GAMMA = 0.9                       # Discount factor for future actions
 
 # Reward weights: current vs future actions
 CURRENT_TYPE_WEIGHT = 0.6    # Current action type importance
