@@ -82,7 +82,7 @@ trainer:
   logger: ["console", "wandb"]
   nnodes: 1
   n_gpus_per_node: 8
-  val_freq: 20  # -1 to disable
+  val_freq: -1  # -1 to disable
   val_before_train: false
   val_only: false
   val_generations_to_log: 3
