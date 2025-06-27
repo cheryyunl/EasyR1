@@ -86,20 +86,34 @@ def extract_first_step(content, section_type):
     
     for line_num, line in enumerate(lines):
         line = line.strip()
-        if line.startswith("Step") and "action" in line:
+        
+        # 检查是否包含Step和action（可能在同一行有[section_type]标记）
+        if "Step" in line and "action" in line:
             logger.debug(f"Found potential step line {line_num}: {line}")
+            
+            # 如果这行同时包含[section_type]标记，需要从Step开始解析
+            if f"[{section_type}]" in line:
+                # 找到Step的位置
+                step_pos = line.find("Step")
+                if step_pos != -1:
+                    step_line = line[step_pos:]  # 从Step开始的部分
+                else:
+                    step_line = line
+            else:
+                step_line = line
+            
             # 提取step编号
-            step_match = re.match(r'Step\s+(\d+):', line)
+            step_match = re.match(r'Step\s+(\d+):', step_line)
             if step_match:
                 step_num = int(step_match.group(1))
-                action = parse_step_action(line)
+                action = parse_step_action(step_line)
                 if action:
-                    steps_found.append((step_num, action, line))
+                    steps_found.append((step_num, action, step_line))
                     logger.debug(f"Successfully parsed step {step_num}: {action}")
                 else:
-                    logger.debug(f"Failed to parse action from step {step_num}")
+                    logger.debug(f"Failed to parse action from step {step_num}: {step_line}")
             else:
-                logger.debug(f"No step number found in line: {line}")
+                logger.debug(f"No step number found in line: {step_line}")
     
     if not steps_found:
         logger.warning(f"No valid steps found in [{section_type}] section")
@@ -266,12 +280,19 @@ def main():
     parser = argparse.ArgumentParser(description='Evaluate first step matching in log files')
     parser.add_argument('--log_file', type=str, required=True, help='Path to the log file')
     parser.add_argument('--output_file', type=str, help='Path to save detailed results (JSON)')
+    parser.add_argument('--debug', action='store_true', help='Enable debug logging')
     
     args = parser.parse_args()
     
     # 设置logging
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
+    if args.debug:
+        console_handler.setLevel(logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
+    else:
+        console_handler.setLevel(logging.INFO)
+        logger.setLevel(logging.INFO)
+        
     logger.addHandler(console_handler)
     
     # 评估
