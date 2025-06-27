@@ -4,7 +4,7 @@ set -x
 
 export PYTHONUNBUFFERED=1
 
-MODEL_PATH=/code/EasyR1/checkpoints/easy_r1/global_step_140/actor/huggingface # replace it with your local file path
+MODEL_PATH=Qwen/Qwen2.5-VL-7B-Instruct # replace it with your local file path
 
 python3 -m verl.trainer.main \
     config=examples/config_eval.yaml \
