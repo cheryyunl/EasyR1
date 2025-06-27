@@ -7,6 +7,7 @@ data:
   image_dir: null
   max_prompt_length: 8192
   max_response_length: 2048
+  max_num_batched_tokens: 10240
   rollout_batch_size: 512  # equivalent to verl's data.train_batch_size
   mini_rollout_batch_size: null  # equivalent to verl's data.gen_batch_size
   val_batch_size: 1024
