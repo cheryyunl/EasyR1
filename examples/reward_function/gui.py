@@ -18,13 +18,13 @@ import numpy as np
 from typing import Dict, List, Tuple, Any
 
 # Configuration
-GAMMA = 0.9                       # Discount factor for future actions
+GAMMA = 0.8                       # Discount factor for future actions
 
 # Reward weights: current vs future actions
-CURRENT_TYPE_WEIGHT = 0.6    # Current action type importance
-CURRENT_DETAIL_WEIGHT = 0.4  # Current action detail importance  
-FUTURE_TYPE_WEIGHT = 0.8     # Future action type importance (higher!)
-FUTURE_DETAIL_WEIGHT = 0.2   # Future action detail importance (lower!)
+CURRENT_TYPE_WEIGHT = 0.5    # Current action type importance
+CURRENT_DETAIL_WEIGHT = 0.5  # Current action detail importance  
+FUTURE_TYPE_WEIGHT = 0.9     # Future action type importance (higher!)
+FUTURE_DETAIL_WEIGHT = 0.1   # Future action detail importance (lower!)
 
 def format_reward(predict: str) -> float:
     if not re.fullmatch(r"<think>.*?</think>\s*<answer>.*?</answer>", predict, re.DOTALL):
@@ -163,10 +163,10 @@ def find_best_alignment(pred_actions: List[dict], gt_actions: List[dict]) -> Lis
             similarity = calculate_action_similarity(pred_action, gt_action, is_current)
             
             # Position penalty: prefer maintaining order
-            position_penalty = abs(pred_idx - gt_idx) * 0.1
+            position_penalty = abs(pred_idx - gt_idx) * 0.2
             adjusted_score = max(0, similarity - position_penalty)
             
-            if adjusted_score > best_score and adjusted_score > 0.25:
+            if adjusted_score > best_score and adjusted_score > 0.4:
                 best_gt_idx = gt_idx
                 best_score = adjusted_score
         
