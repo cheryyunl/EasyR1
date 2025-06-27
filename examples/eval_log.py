@@ -109,16 +109,27 @@ def evaluate_target_match(pred_action, gt_action):
     """评估target是否匹配"""
     action_type = pred_action.get('action_type')
     
+    # 如果ground truth只有action_type，没有其他参数，则认为匹配成功
+    gt_keys = set(gt_action.keys())
+    if gt_keys == {'action_type'}:
+        return True
+    
     if action_type in ['click', 'long_press']:
         # Grounding任务：比较target数字ID
         pred_target = pred_action.get('target', '')
         gt_target = gt_action.get('target', '')
+        # 如果GT没有target，则认为匹配
+        if 'target' not in gt_action:
+            return True
         return pred_target == gt_target
     
     elif action_type in ['input_text']:
         # 文本任务：使用F1分数
         pred_text = pred_action.get('text', '')
         gt_text = gt_action.get('text', '')
+        # 如果GT没有text，则认为匹配
+        if 'text' not in gt_action:
+            return True
         f1_score = calculate_f1_score(pred_text, gt_text)
         return f1_score >= 0.5
     
@@ -126,17 +137,31 @@ def evaluate_target_match(pred_action, gt_action):
         # 滚动任务：比较方向
         pred_direction = pred_action.get('direction', '')
         gt_direction = gt_action.get('direction', '')
+        # 如果GT没有direction，则认为匹配
+        if 'direction' not in gt_action:
+            return True
         return pred_direction == gt_direction
     
     elif action_type in ['open_app']:
         # 打开应用：比较应用名
         pred_app = pred_action.get('app_name', '')
         gt_app = gt_action.get('app_name', '')
+        # 如果GT没有app_name，则认为匹配
+        if 'app_name' not in gt_action:
+            return True
         f1_score = calculate_f1_score(pred_app, gt_app)
         return f1_score >= 0.5
     
+    elif action_type in ['wait']:
+        # wait动作：GT通常不包含时间参数，只要action_type匹配即可
+        return True
+    
+    elif action_type in ['navigate_home', 'navigate_back']:
+        # 导航动作：通常没有额外参数
+        return True
+    
     else:
-        # 其他动作类型，如果没有额外参数则认为匹配
+        # 其他动作类型，如果GT没有额外参数则认为匹配
         return True
 
 def evaluate_log_file(log_file_path):
