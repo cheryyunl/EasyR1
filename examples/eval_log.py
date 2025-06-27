@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 def calculate_f1_score(predicted_str, ground_truth_str):
+    """计算F1分数 - 从原代码复制"""
     predicted_str = predicted_str.replace("[", "").replace("]", "")
     ground_truth_str = ground_truth_str.replace("[", "").replace("]", "")
     predicted_tokens = set(predicted_str.lower().split())
@@ -56,6 +57,7 @@ def extract_first_step(content, section_type):
     # 查找section标记
     section_start = content.find(f"[{section_type}]")
     if section_start == -1:
+        logger.warning(f"Could not find [{section_type}] section")
         return None
     
     # 从section开始位置往后查找
@@ -74,16 +76,34 @@ def extract_first_step(content, section_type):
     else:
         section_content = remaining_content[:next_section]
     
-    # 在section内容中查找第一个Step
+    logger.debug(f"Section [{section_type}] content preview: {section_content[:200]}...")
+    
+    # 在section内容中查找所有Step，然后选择编号最小的
     lines = section_content.split('\n')
+    steps_found = []
+    
     for line in lines:
         line = line.strip()
         if line.startswith("Step") and "action" in line:
-            action = parse_step_action(line)
-            if action:
-                return action
+            # 提取step编号
+            import re
+            step_match = re.match(r'Step\s+(\d+):', line)
+            if step_match:
+                step_num = int(step_match.group(1))
+                action = parse_step_action(line)
+                if action:
+                    steps_found.append((step_num, action, line))
     
-    return None
+    if not steps_found:
+        logger.warning(f"No valid steps found in [{section_type}] section")
+        return None
+    
+    # 选择编号最小的step
+    steps_found.sort(key=lambda x: x[0])  # 按step编号排序
+    first_step = steps_found[0]
+    logger.debug(f"Found {len(steps_found)} steps, using Step {first_step[0]}: {first_step[2][:100]}...")
+    
+    return first_step[1]  # 返回action
 
 def evaluate_target_match(pred_action, gt_action):
     """评估target是否匹配"""
