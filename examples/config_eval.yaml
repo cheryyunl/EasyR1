@@ -75,7 +75,7 @@ worker:
 
   reward:
     reward_type: batch
-    reward_function: ./examples/reward_function/gui_eval.py:compute_score
+    reward_function: ./examples/reward_function/gui.py:compute_score
 
 trainer:
   total_epochs: 1
