@@ -47,6 +47,8 @@ def parse_step_action(step_line):
             action_str = action_str.replace("'", '"')
             action = json.loads(action_str)
             return action
+        else:
+            logger.debug(f"No action pattern found in line: {step_line}")
     except Exception as e:
         logger.warning(f"Failed to parse action from line: {step_line[:100]}...")
         logger.warning(f"Error: {e}")
@@ -57,7 +59,7 @@ def extract_first_step(content, section_type):
     # 查找section标记
     section_start = content.find(f"[{section_type}]")
     if section_start == -1:
-        logger.warning(f"Could not find [{section_type}] section")
+        logger.warning(f"Could not find [{section_type}] section in content")
         return None
     
     # 从section开始位置往后查找
@@ -76,32 +78,38 @@ def extract_first_step(content, section_type):
     else:
         section_content = remaining_content[:next_section]
     
-    logger.debug(f"Section [{section_type}] content preview: {section_content[:200]}...")
+    logger.debug(f"Section [{section_type}] content (first 300 chars): {section_content[:300]}")
     
     # 在section内容中查找所有Step，然后选择编号最小的
     lines = section_content.split('\n')
     steps_found = []
     
-    for line in lines:
+    for line_num, line in enumerate(lines):
         line = line.strip()
         if line.startswith("Step") and "action" in line:
+            logger.debug(f"Found potential step line {line_num}: {line}")
             # 提取step编号
-            import re
             step_match = re.match(r'Step\s+(\d+):', line)
             if step_match:
                 step_num = int(step_match.group(1))
                 action = parse_step_action(line)
                 if action:
                     steps_found.append((step_num, action, line))
+                    logger.debug(f"Successfully parsed step {step_num}: {action}")
+                else:
+                    logger.debug(f"Failed to parse action from step {step_num}")
+            else:
+                logger.debug(f"No step number found in line: {line}")
     
     if not steps_found:
         logger.warning(f"No valid steps found in [{section_type}] section")
+        logger.warning(f"Section content:\n{section_content}")
         return None
     
     # 选择编号最小的step
     steps_found.sort(key=lambda x: x[0])  # 按step编号排序
     first_step = steps_found[0]
-    logger.debug(f"Found {len(steps_found)} steps, using Step {first_step[0]}: {first_step[2][:100]}...")
+    logger.debug(f"Found {len(steps_found)} steps in [{section_type}], using Step {first_step[0]}")
     
     return first_step[1]  # 返回action
 
