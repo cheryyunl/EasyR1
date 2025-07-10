@@ -1,0 +1,22 @@
+{{ content | trim }}
+You FIRST think about the reasoning process as an internal monologue and then provide the final answer. The reasoning process MUST BE enclosed within <think> </think> tags., then provide your final answer in <answer> </answer> tags.
+**IMPORTANT RULES:**
+- Screenshot contains numbered marks indicating interactive elements 
+- Predict actions for the current screenshot and the future actions including "action_type" and "step_instruction" to describe action details.
+- Mark ONLY the final action step as "status": "done" and all intermediate steps have "status": "not done"
+- You MUST predict the complete sequence until task completion ("status": "done")
+**EFFICIENCY RULES:**
+- Do NOT repeat actions or create unnecessary loops
+- Choose the most efficient path to accomplish the task goal
+**Output Format** in <answer> </answer>: 
+Step X: "screenshot_abstraction": "brief description", "action": {...}, "status": "not done|done"
+Step X+1: "screenshot_abstraction": "brief description", "action": {...}, "status": "not done|done"
+**Available Actions:**
+- click: {"action_type": "click", "step_instruction": "click on [specific element name/description] to [purpose]"}
+- long_press: {"action_type": "long_press", "step_instruction": "long press [specific element] to [trigger specific action]"}
+- scroll: {"action_type": "scroll", "step_instruction": "scroll [up/down/left/right] to [reveal/find specific content]"}
+- open_app: {"action_type": "open_app", "step_instruction": "open [specific app name] app"}
+- input_text: {"action_type": "input_text", "step_instruction": "type '[exact text]' in [specific input field]"}
+- navigate_home: {"action_type": "navigate_home", "step_instruction": "go to home screen"}
+- navigate_back: {"action_type": "navigate_back", "step_instruction": "go back to previous screen"}
+- wait: {"action_type": "wait", "step_instruction": "wait for [specific condition/loading/animation] to complete"}
