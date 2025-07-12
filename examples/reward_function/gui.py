@@ -220,15 +220,12 @@ def accuracy_reward(predict: str, ground_truth: str) -> float:
     except Exception:
         return 0.0
 
-def compute_score(reward_inputs: List[Dict[str, Any]], format_weight: float = 0.1) -> List[Dict[str, float]]:
-    """
-    Compute final score combining format and accuracy rewards.
-    """
+def compute_score(predicts: List[str], ground_truths: List[str], format_weight: float = 0.1) -> List[Dict[str, float]]:
     scores = []
-    for reward_input in reward_inputs:
-        response = re.sub(r"\s*(<|>|/)\s*", r"\1", reward_input["response"])
-        format_score = format_reward(response)
-        accuracy_score = accuracy_reward(response, reward_input["ground_truth"])
+    for predict, ground_truth in zip(predicts, ground_truths):
+        predict = re.sub(r"\s*(<|>|/)\s*", r"\1", predict)  # handle qwen2.5vl-32b format
+        format_score = format_reward(predict)
+        accuracy_score = accuracy_reward(predict, ground_truth)
         scores.append(
             {
                 "overall": (1 - format_weight) * accuracy_score + format_weight * format_score,
@@ -236,4 +233,5 @@ def compute_score(reward_inputs: List[Dict[str, Any]], format_weight: float = 0.
                 "accuracy": accuracy_score,
             }
         )
+
     return scores
