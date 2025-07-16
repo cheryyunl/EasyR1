@@ -21,7 +21,7 @@ from typing import Dict, List, Tuple, Any
 GAMMA = 0.8  # Discount factor for future actions
 
 def format_reward(predict: str) -> float:
-    """Check if prediction follows correct format with action_type and action_abstraction."""
+    """Check if prediction follows correct format with action_type and step_instruction."""
     if not re.fullmatch(r"<think>.*?</think>\s*<answer>.*?</answer>", predict, re.DOTALL):
         return 0.0
     
@@ -43,7 +43,7 @@ def format_reward(predict: str) -> float:
         has_action = re.search(r'"action":\s*\{[^}]+\}', step_text)
         has_status = re.search(r'"status":\s*"(done|not done)"', step_text)
         
-        # Check action contains action_type and action_abstraction
+        # Check action contains action_type and step_instruction
         action_valid = False
         if has_action:
             action_match = re.search(r'"action":\s*(\{[^}]+\})', step_text)
@@ -223,7 +223,7 @@ def accuracy_reward(predict: str, ground_truth: str) -> float:
 def compute_score(predicts: List[str], ground_truths: List[str], format_weight: float = 0.1) -> List[Dict[str, float]]:
     scores = []
     for predict, ground_truth in zip(predicts, ground_truths):
-        predict = re.sub(r"\s*(<|>|/)\s*", r"\1", predict)  # handle qwen2.5vl-32b format
+        predict = re.sub(r"\s*(<|>|/)\s*", r"\1", predict)  
         format_score = format_reward(predict)
         accuracy_score = accuracy_reward(predict, ground_truth)
         scores.append(
